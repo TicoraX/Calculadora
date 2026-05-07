@@ -1,1 +1,7 @@
-# En este repositorio hay una calculadora simple.
+# En este repositorio hay una calculadora simple con apartado cientifico
+# la idea es ir mejorandola poco a poco, por ahora tiene lo basico, mas el apartado cientifico.
+# las funciones que tiene son: suma, resta, multiplicacion, division, potencia, raiz, seno, coseno, tangente, logaritmo en base 10 y logaritmo natural.
+# los botones estan distribuidos en 7 filas y 4 columnas.
+
+# El objetivo es que poco a poco vaya añadiendo mas opciones y funciones, ademas de que sea mas atractiva visualmente.
+# Se busca que haya multiples apartados, como el cientifico, el de estadistica, el de geometria, intereses, etc.
