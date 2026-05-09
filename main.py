@@ -208,6 +208,12 @@ class Calculadora(tk.Tk):
             self.lbl_res_int.config(text="Error en los datos", fg="#FF453A")
 
     def click_boton(self, texto):
+        if self.pantalla.get() == "Error":
+            if texto == 'C':
+                self.pantalla.delete(0, tk.END)
+                self.historial.config(text="")
+            return
+
         if texto == 'C':
             self.pantalla.delete(0, tk.END)
             self.historial.config(text="")
@@ -216,11 +222,41 @@ class Calculadora(tk.Tk):
         elif texto == '=':
             try:
                 exp_orig = self.pantalla.get()
+                if not exp_orig: return
+                
                 exp = exp_orig
-                reemplazos = {'sin':'seno', 'cos':'coseno', 'tan':'tangente', 'log':'logaritmo_base10', 'ln':'logaritmo_Natural', 'π':'math.pi', 'e':'math.e', '^':'**', '√':'raiz_cuadrada'}
-                for v, n in reemplazos.items(): exp = exp.replace(v, n)
+                
+                # Constantes
+                exp = exp.replace('π', 'math.pi')
+                exp = re.sub(r'\be\b', 'math.e', exp)
+                
+                # Funciones
+                exp = re.sub(r'\bsin\b', 'seno', exp)
+                exp = re.sub(r'\bcos\b', 'coseno', exp)
+                exp = re.sub(r'\btan\b', 'tangente', exp)
+                exp = re.sub(r'\blog\b', 'logaritmo_base10', exp)
+                exp = re.sub(r'\bln\b', 'logaritmo_Natural', exp)
+                
+                # Símbolos
+                exp = exp.replace('^', '**')
+                exp = exp.replace('√', 'raiz_cuadrada')
+                
+                # Factorial
                 exp = re.sub(r'(\d+(?:\.\d+)?)!', r'factorial(\1)', exp)
-                res = str(eval(exp, {**globals(), 'math': math}))
+                
+                # Contexto cerrado para eval
+                contexto = {
+                    'seno': seno,
+                    'coseno': coseno,
+                    'tangente': tangente,
+                    'logaritmo_base10': logaritmo_base10,
+                    'logaritmo_Natural': logaritmo_Natural,
+                    'factorial': factorial,
+                    'raiz_cuadrada': raiz_cuadrada,
+                    'math': math
+                }
+                
+                res = str(eval(exp, {"__builtins__": __builtins__}, contexto))
                 if res.endswith(".0"): res = res[:-2]
                 self.historial.config(text=exp_orig + " =")
                 self.pantalla.delete(0, tk.END)
