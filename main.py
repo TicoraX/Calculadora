@@ -34,6 +34,7 @@ class Calculadora(tk.Tk):
         self.crear_interfaz_calculadora()
         self.crear_interfaz_menu()
         self.crear_interfaz_intereses()
+        self.crear_interfaz_conversiones()
 
         # Mostrar calculadora por defecto
         self.mostrar_calculadora()
@@ -41,20 +42,30 @@ class Calculadora(tk.Tk):
     def mostrar_calculadora(self):
         self.frame_intereses.pack_forget()
         self.frame_menu.pack_forget()
+        self.frame_conversiones.pack_forget()
         self.frame_calc.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Científica")
 
     def mostrar_menu(self):
         self.frame_calc.pack_forget()
         self.frame_intereses.pack_forget()
+        self.frame_conversiones.pack_forget()
         self.frame_menu.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Funciones")
 
     def mostrar_intereses(self):
         self.frame_menu.pack_forget()
         self.frame_calc.pack_forget()
+        self.frame_conversiones.pack_forget()
         self.frame_intereses.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Intereses")
+
+    def mostrar_conversiones(self):
+        self.frame_menu.pack_forget()
+        self.frame_calc.pack_forget()
+        self.frame_intereses.pack_forget()
+        self.frame_conversiones.pack(fill="both", expand=True)
+        self.title("Calculadora Tocha - Conversiones")
 
     def crear_interfaz_calculadora(self):
         self.frame_calc = tk.Frame(self.container, bg="#1C1C1E")
@@ -114,6 +125,7 @@ class Calculadora(tk.Tk):
 
         # Lista de funciones (se pueden agregar más aquí)
         lista_funciones = [
+            ("Conversiones", self.mostrar_conversiones),
             ("Intereses", self.mostrar_intereses),
         ]
         # Orden alfabético
@@ -206,6 +218,114 @@ class Calculadora(tk.Tk):
             self.lbl_res_int.config(text=texto, fg="#32D74B")
         except:
             self.lbl_res_int.config(text="Error en los datos", fg="#FF453A")
+
+    def crear_interfaz_conversiones(self):
+        self.frame_conversiones = tk.Frame(self.container, bg="#1C1C1E")
+        
+        btn_back = tk.Button(self.frame_conversiones, text="Volver", font=("Segoe UI", 10, "bold"), 
+                             bg="#3A3A3C", fg="white", bd=0, padx=10, pady=5, command=self.mostrar_menu)
+        btn_back.pack(anchor="w", padx=20, pady=20)
+
+        tk.Label(self.frame_conversiones, text="Conversiones", font=("Segoe UI", 24, "bold"), bg="#1C1C1E", fg="white").pack(pady=(0, 20))
+
+        label_style = {"font": ("Segoe UI", 11), "bg": "#1C1C1E", "fg": "#8E8E93"}
+        entry_style = {"font": ("Segoe UI", 16), "bg": "#2C2C2E", "fg": "white", "insertbackground": "white", "bd": 0, "justify": "center"}
+
+        # Tipo de conversión
+        tk.Label(self.frame_conversiones, text="Categoría", **label_style).pack()
+        self.combo_categoria = ttk.Combobox(self.frame_conversiones, values=["Monedas", "Pesos", "Distancias"], state="readonly", font=("Segoe UI", 12))
+        self.combo_categoria.set("Monedas")
+        self.combo_categoria.pack(pady=5, padx=50, fill="x")
+        self.combo_categoria.bind("<<ComboboxSelected>>", self.actualizar_opciones_conversion)
+
+        # Contenedor De y A
+        frame_opciones = tk.Frame(self.frame_conversiones, bg="#1C1C1E")
+        frame_opciones.pack(fill="x", padx=50, pady=15)
+
+        # De
+        frame_de = tk.Frame(frame_opciones, bg="#1C1C1E")
+        frame_de.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        tk.Label(frame_de, text="De", **label_style).pack()
+        self.combo_de = ttk.Combobox(frame_de, state="readonly", font=("Segoe UI", 12))
+        self.combo_de.pack(fill="x")
+
+        # A
+        frame_a = tk.Frame(frame_opciones, bg="#1C1C1E")
+        frame_a.pack(side="right", fill="x", expand=True, padx=(5, 0))
+        tk.Label(frame_a, text="A", **label_style).pack()
+        self.combo_a = ttk.Combobox(frame_a, state="readonly", font=("Segoe UI", 12))
+        self.combo_a.pack(fill="x")
+
+        # Cantidad
+        tk.Label(self.frame_conversiones, text="Cantidad", **label_style).pack(pady=(10, 0))
+        self.ent_cantidad = tk.Entry(self.frame_conversiones, **entry_style)
+        self.ent_cantidad.pack(pady=5, padx=50, fill="x", ipady=8)
+
+        # Botón Calcular
+        tk.Button(self.frame_conversiones, text="Convertir", font=self.btn_font, bg="#32D74B", fg="white", bd=0, padx=20, pady=10, 
+                  command=self.calcular_conversion).pack(pady=20)
+
+        # Resultado
+        self.lbl_res_conv = tk.Label(self.frame_conversiones, text="Resultado: 0", font=("Segoe UI", 18, "bold"), bg="#1C1C1E", fg="#32D74B", justify="center")
+        self.lbl_res_conv.pack(pady=10)
+
+        self.tasas_monedas = None
+        self.actualizar_opciones_conversion()
+
+    def actualizar_opciones_conversion(self, event=None):
+        categoria = self.combo_categoria.get()
+        if categoria == "Monedas":
+            if not self.tasas_monedas:
+                from Funciones.conversiones import obtener_tasas_monedas
+                self.tasas_monedas = obtener_tasas_monedas()
+            
+            if self.tasas_monedas:
+                monedas = ["USD", "EUR", "COP", "MXN", "ARS", "CLP", "PEN", "BRL", "GBP", "JPY"]
+                self.combo_de.config(values=monedas)
+                self.combo_a.config(values=monedas)
+                self.combo_de.set("USD")
+                self.combo_a.set("COP")
+            else:
+                self.combo_de.config(values=["Error API"])
+                self.combo_a.config(values=["Error API"])
+                self.combo_de.set("Error API")
+                self.combo_a.set("Error API")
+        elif categoria == "Pesos":
+            unidades = ["Kilos", "Libras", "Onzas", "Gramos", "Miligramos"]
+            self.combo_de.config(values=unidades)
+            self.combo_a.config(values=unidades)
+            self.combo_de.set("Kilos")
+            self.combo_a.set("Libras")
+        elif categoria == "Distancias":
+            unidades = ["Metros", "Kilómetros", "Millas", "Yardas", "Pies", "Pulgadas"]
+            self.combo_de.config(values=unidades)
+            self.combo_a.config(values=unidades)
+            self.combo_de.set("Metros")
+            self.combo_a.set("Millas")
+
+    def calcular_conversion(self):
+        try:
+            val = float(self.ent_cantidad.get().replace(',', ''))
+            cat = self.combo_categoria.get()
+            de_u = self.combo_de.get()
+            a_u = self.combo_a.get()
+            
+            from Funciones.conversiones import convertir_moneda, convertir_peso, convertir_distancia
+
+            if cat == "Monedas":
+                res = convertir_moneda(val, de_u, a_u, self.tasas_monedas)
+                if res is None: raise ValueError("Error API")
+                texto = f"{val:,.2f} {de_u} =\n{res:,.2f} {a_u}"
+            elif cat == "Pesos":
+                res = convertir_peso(val, de_u, a_u)
+                texto = f"{val:,.2f} {de_u} =\n{res:,.4f} {a_u}"
+            elif cat == "Distancias":
+                res = convertir_distancia(val, de_u, a_u)
+                texto = f"{val:,.2f} {de_u} =\n{res:,.4f} {a_u}"
+            
+            self.lbl_res_conv.config(text=texto, fg="#32D74B")
+        except Exception:
+            self.lbl_res_conv.config(text="Error en los datos", fg="#FF453A")
 
     def click_boton(self, texto):
         if self.pantalla.get() == "Error":
