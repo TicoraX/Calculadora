@@ -35,6 +35,7 @@ class Calculadora(tk.Tk):
         self.crear_interfaz_menu()
         self.crear_interfaz_intereses()
         self.crear_interfaz_conversiones()
+        self.crear_interfaz_figuras()
 
         # Mostrar calculadora por defecto
         self.mostrar_calculadora()
@@ -43,6 +44,7 @@ class Calculadora(tk.Tk):
         self.frame_intereses.pack_forget()
         self.frame_menu.pack_forget()
         self.frame_conversiones.pack_forget()
+        self.frame_figuras.pack_forget()
         self.frame_calc.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Científica")
 
@@ -50,6 +52,7 @@ class Calculadora(tk.Tk):
         self.frame_calc.pack_forget()
         self.frame_intereses.pack_forget()
         self.frame_conversiones.pack_forget()
+        self.frame_figuras.pack_forget()
         self.frame_menu.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Funciones")
 
@@ -57,6 +60,7 @@ class Calculadora(tk.Tk):
         self.frame_menu.pack_forget()
         self.frame_calc.pack_forget()
         self.frame_conversiones.pack_forget()
+        self.frame_figuras.pack_forget()
         self.frame_intereses.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Intereses")
 
@@ -64,8 +68,17 @@ class Calculadora(tk.Tk):
         self.frame_menu.pack_forget()
         self.frame_calc.pack_forget()
         self.frame_intereses.pack_forget()
+        self.frame_figuras.pack_forget()
         self.frame_conversiones.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Conversiones")
+
+    def mostrar_figuras(self):
+        self.frame_menu.pack_forget()
+        self.frame_calc.pack_forget()
+        self.frame_intereses.pack_forget()
+        self.frame_conversiones.pack_forget()
+        self.frame_figuras.pack(fill="both", expand=True)
+        self.title("Calculadora Tocha - Figuras")
 
     def crear_interfaz_calculadora(self):
         self.frame_calc = tk.Frame(self.container, bg="#1C1C1E")
@@ -126,6 +139,7 @@ class Calculadora(tk.Tk):
         # Lista de funciones (se pueden agregar más aquí)
         lista_funciones = [
             ("Conversiones", self.mostrar_conversiones),
+            ("Figuras Geométricas", self.mostrar_figuras),
             ("Intereses", self.mostrar_intereses),
         ]
         # Orden alfabético
@@ -326,6 +340,115 @@ class Calculadora(tk.Tk):
             self.lbl_res_conv.config(text=texto, fg="#32D74B")
         except Exception:
             self.lbl_res_conv.config(text="Error en los datos", fg="#FF453A")
+
+    def crear_interfaz_figuras(self):
+        self.frame_figuras = tk.Frame(self.container, bg="#1C1C1E")
+        
+        btn_back = tk.Button(self.frame_figuras, text="Volver", font=("Segoe UI", 10, "bold"), 
+                             bg="#3A3A3C", fg="white", bd=0, padx=10, pady=5, command=self.mostrar_menu)
+        btn_back.pack(anchor="w", padx=20, pady=20)
+
+        tk.Label(self.frame_figuras, text="Figuras Geométricas", font=("Segoe UI", 24, "bold"), bg="#1C1C1E", fg="white").pack(pady=(0, 20))
+
+        label_style = {"font": ("Segoe UI", 11), "bg": "#1C1C1E", "fg": "#8E8E93"}
+        entry_style = {"font": ("Segoe UI", 16), "bg": "#2C2C2E", "fg": "white", "insertbackground": "white", "bd": 0, "justify": "center"}
+
+        # Selectores
+        frame_sel = tk.Frame(self.frame_figuras, bg="#1C1C1E")
+        frame_sel.pack(fill="x", padx=50, pady=10)
+
+        self.combo_figura = ttk.Combobox(frame_sel, values=["Cuadrado", "Rectángulo", "Triángulo", "Círculo"], state="readonly", font=("Segoe UI", 12))
+        self.combo_figura.set("Cuadrado")
+        self.combo_figura.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.combo_figura.bind("<<ComboboxSelected>>", self.actualizar_inputs_figuras)
+
+        self.combo_operacion = ttk.Combobox(frame_sel, values=["Área", "Perímetro"], state="readonly", font=("Segoe UI", 12))
+        self.combo_operacion.set("Área")
+        self.combo_operacion.pack(side="right", fill="x", expand=True, padx=(5, 0))
+        self.combo_operacion.bind("<<ComboboxSelected>>", self.actualizar_inputs_figuras)
+
+        # Contenedor de inputs dinámicos
+        self.frame_inputs_fig = tk.Frame(self.frame_figuras, bg="#1C1C1E")
+        self.frame_inputs_fig.pack(fill="x", padx=50, pady=10)
+
+        self.lbl_inp1 = tk.Label(self.frame_inputs_fig, text="Lado", **label_style)
+        self.ent_inp1 = tk.Entry(self.frame_inputs_fig, **entry_style)
+        
+        self.lbl_inp2 = tk.Label(self.frame_inputs_fig, text="Base", **label_style)
+        self.ent_inp2 = tk.Entry(self.frame_inputs_fig, **entry_style)
+
+        self.lbl_inp3 = tk.Label(self.frame_inputs_fig, text="Lado 3", **label_style)
+        self.ent_inp3 = tk.Entry(self.frame_inputs_fig, **entry_style)
+
+        # Botón Calcular
+        tk.Button(self.frame_figuras, text="Calcular", font=self.btn_font, bg="#FF9F0A", fg="white", bd=0, padx=20, pady=10, 
+                  command=self.calcular_figura).pack(pady=20)
+
+        # Resultado
+        self.lbl_res_fig = tk.Label(self.frame_figuras, text="Resultado: 0", font=("Segoe UI", 18, "bold"), bg="#1C1C1E", fg="#32D74B", justify="center")
+        self.lbl_res_fig.pack(pady=10)
+
+        self.actualizar_inputs_figuras()
+
+    def actualizar_inputs_figuras(self, event=None):
+        fig = self.combo_figura.get()
+        op = self.combo_operacion.get()
+
+        for widget in (self.lbl_inp1, self.ent_inp1, self.lbl_inp2, self.ent_inp2, self.lbl_inp3, self.ent_inp3):
+            widget.pack_forget()
+
+        def mostrar(lbl_w, ent_w, texto):
+            lbl_w.config(text=texto)
+            lbl_w.pack(pady=(10, 0))
+            ent_w.pack(pady=5, fill="x", ipady=8)
+
+        if fig == "Cuadrado":
+            mostrar(self.lbl_inp1, self.ent_inp1, "Lado")
+        elif fig == "Rectángulo":
+            mostrar(self.lbl_inp1, self.ent_inp1, "Base")
+            mostrar(self.lbl_inp2, self.ent_inp2, "Altura")
+        elif fig == "Círculo":
+            mostrar(self.lbl_inp1, self.ent_inp1, "Radio")
+        elif fig == "Triángulo":
+            if op == "Área":
+                mostrar(self.lbl_inp1, self.ent_inp1, "Base")
+                mostrar(self.lbl_inp2, self.ent_inp2, "Altura")
+            else:
+                mostrar(self.lbl_inp1, self.ent_inp1, "Lado 1")
+                mostrar(self.lbl_inp2, self.ent_inp2, "Lado 2")
+                mostrar(self.lbl_inp3, self.ent_inp3, "Lado 3")
+
+    def calcular_figura(self):
+        try:
+            fig = self.combo_figura.get()
+            op = self.combo_operacion.get()
+            
+            from Funciones.FigurasG import (area_cuadrado, perimetro_cuadrado, area_rectangulo, 
+                                            perimetro_rectangulo, area_triangulo, perimetro_triangulo, 
+                                            area_circulo, perimetro_circulo)
+
+            val1 = float(self.ent_inp1.get().replace(',', '')) if self.ent_inp1.winfo_ismapped() else 0
+            val2 = float(self.ent_inp2.get().replace(',', '')) if self.ent_inp2.winfo_ismapped() else 0
+            val3 = float(self.ent_inp3.get().replace(',', '')) if self.ent_inp3.winfo_ismapped() else 0
+
+            res = 0
+            if fig == "Cuadrado":
+                res = area_cuadrado(val1) if op == "Área" else perimetro_cuadrado(val1)
+            elif fig == "Rectángulo":
+                res = area_rectangulo(val1, val2) if op == "Área" else perimetro_rectangulo(val1, val2)
+            elif fig == "Círculo":
+                res = area_circulo(val1) if op == "Área" else perimetro_circulo(val1)
+            elif fig == "Triángulo":
+                if op == "Área":
+                    res = area_triangulo(val1, val2)
+                else:
+                    res = perimetro_triangulo(val1, val2, val3)
+
+            unidades = "²" if op == "Área" else ""
+            res_formateado = f"{res:,.4f}".rstrip('0').rstrip('.') if '.' in f"{res:,.4f}" else f"{res:,}"
+            self.lbl_res_fig.config(text=f"{op}: {res_formateado}{unidades}", fg="#32D74B")
+        except Exception:
+            self.lbl_res_fig.config(text="Error en los datos", fg="#FF453A")
 
     def click_boton(self, texto):
         if self.pantalla.get() == "Error":
