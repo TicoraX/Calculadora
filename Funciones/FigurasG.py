@@ -33,3 +33,31 @@ def area_circulo(radio):
 
 def perimetro_circulo(radio):
     return 2 * math.pi * radio
+
+# Figuras 3D (Volumen y Área Superficial)
+
+def volumen_cubo(lado):
+    return lado ** 3
+
+def area_sup_cubo(lado):
+    return 6 * (lado ** 2)
+
+def volumen_esfera(radio):
+    return (4/3) * math.pi * (radio ** 3)
+
+def area_sup_esfera(radio):
+    return 4 * math.pi * (radio ** 2)
+
+def volumen_cilindro(radio, altura):
+    return math.pi * (radio ** 2) * altura
+
+def area_sup_cilindro(radio, altura):
+    return 2 * math.pi * radio * (radio + altura)
+
+def volumen_cono(radio, altura):
+    return (1/3) * math.pi * (radio ** 2) * altura
+
+def area_sup_cono(radio, altura):
+    # Generatriz: sqrt(r^2 + h^2)
+    generatriz = math.sqrt((radio ** 2) + (altura ** 2))
+    return math.pi * radio * (radio + generatriz)

@@ -357,7 +357,7 @@ class Calculadora(tk.Tk):
         frame_sel = tk.Frame(self.frame_figuras, bg="#1C1C1E")
         frame_sel.pack(fill="x", padx=50, pady=10)
 
-        self.combo_figura = ttk.Combobox(frame_sel, values=["Cuadrado", "Rectángulo", "Triángulo", "Círculo"], state="readonly", font=("Segoe UI", 12))
+        self.combo_figura = ttk.Combobox(frame_sel, values=["Cuadrado", "Rectángulo", "Triángulo", "Círculo", "Cubo", "Esfera", "Cilindro", "Cono"], state="readonly", font=("Segoe UI", 12))
         self.combo_figura.set("Cuadrado")
         self.combo_figura.pack(side="left", fill="x", expand=True, padx=(0, 5))
         self.combo_figura.bind("<<ComboboxSelected>>", self.actualizar_inputs_figuras)
@@ -392,6 +392,19 @@ class Calculadora(tk.Tk):
 
     def actualizar_inputs_figuras(self, event=None):
         fig = self.combo_figura.get()
+        
+        # Opciones dinámicas
+        figuras_2d = ["Cuadrado", "Rectángulo", "Triángulo", "Círculo"]
+        
+        if fig in figuras_2d:
+            self.combo_operacion.config(values=["Área", "Perímetro"])
+            if self.combo_operacion.get() not in ["Área", "Perímetro"]:
+                self.combo_operacion.set("Área")
+        else:
+            self.combo_operacion.config(values=["Volumen", "Área Superficial"])
+            if self.combo_operacion.get() not in ["Volumen", "Área Superficial"]:
+                self.combo_operacion.set("Volumen")
+
         op = self.combo_operacion.get()
 
         for widget in (self.lbl_inp1, self.ent_inp1, self.lbl_inp2, self.ent_inp2, self.lbl_inp3, self.ent_inp3):
@@ -402,13 +415,16 @@ class Calculadora(tk.Tk):
             lbl_w.pack(pady=(10, 0))
             ent_w.pack(pady=5, fill="x", ipady=8)
 
-        if fig == "Cuadrado":
+        if fig == "Cuadrado" or fig == "Cubo":
             mostrar(self.lbl_inp1, self.ent_inp1, "Lado")
         elif fig == "Rectángulo":
             mostrar(self.lbl_inp1, self.ent_inp1, "Base")
             mostrar(self.lbl_inp2, self.ent_inp2, "Altura")
-        elif fig == "Círculo":
+        elif fig == "Círculo" or fig == "Esfera":
             mostrar(self.lbl_inp1, self.ent_inp1, "Radio")
+        elif fig in ["Cilindro", "Cono"]:
+            mostrar(self.lbl_inp1, self.ent_inp1, "Radio")
+            mostrar(self.lbl_inp2, self.ent_inp2, "Altura")
         elif fig == "Triángulo":
             if op == "Área":
                 mostrar(self.lbl_inp1, self.ent_inp1, "Base")
@@ -425,13 +441,16 @@ class Calculadora(tk.Tk):
             
             from Funciones.FigurasG import (area_cuadrado, perimetro_cuadrado, area_rectangulo, 
                                             perimetro_rectangulo, area_triangulo, perimetro_triangulo, 
-                                            area_circulo, perimetro_circulo)
+                                            area_circulo, perimetro_circulo,
+                                            volumen_cubo, area_sup_cubo, volumen_esfera, area_sup_esfera,
+                                            volumen_cilindro, area_sup_cilindro, volumen_cono, area_sup_cono)
 
             val1 = float(self.ent_inp1.get().replace(',', '')) if self.ent_inp1.winfo_ismapped() else 0
             val2 = float(self.ent_inp2.get().replace(',', '')) if self.ent_inp2.winfo_ismapped() else 0
             val3 = float(self.ent_inp3.get().replace(',', '')) if self.ent_inp3.winfo_ismapped() else 0
 
             res = 0
+            # 2D
             if fig == "Cuadrado":
                 res = area_cuadrado(val1) if op == "Área" else perimetro_cuadrado(val1)
             elif fig == "Rectángulo":
@@ -443,8 +462,17 @@ class Calculadora(tk.Tk):
                     res = area_triangulo(val1, val2)
                 else:
                     res = perimetro_triangulo(val1, val2, val3)
+            # 3D
+            elif fig == "Cubo":
+                res = volumen_cubo(val1) if op == "Volumen" else area_sup_cubo(val1)
+            elif fig == "Esfera":
+                res = volumen_esfera(val1) if op == "Volumen" else area_sup_esfera(val1)
+            elif fig == "Cilindro":
+                res = volumen_cilindro(val1, val2) if op == "Volumen" else area_sup_cilindro(val1, val2)
+            elif fig == "Cono":
+                res = volumen_cono(val1, val2) if op == "Volumen" else area_sup_cono(val1, val2)
 
-            unidades = "²" if op == "Área" else ""
+            unidades = "³" if op == "Volumen" else ("²" if op in ["Área", "Área Superficial"] else "")
             res_formateado = f"{res:,.4f}".rstrip('0').rstrip('.') if '.' in f"{res:,.4f}" else f"{res:,}"
             self.lbl_res_fig.config(text=f"{op}: {res_formateado}{unidades}", fg="#32D74B")
         except Exception:
