@@ -1,12 +1,17 @@
 import statistics
+import re
 
 def calcular_estadistica(datos_str):
     """
-    Toma una cadena de números separados por comas o espacios,
+    Toma una cadena de números en cualquier formato (comas, espacios, corchetes)
     y devuelve un diccionario con los cálculos estadísticos.
     """
     try:
-        datos = [float(x.strip()) for x in datos_str.replace(',', ' ').split() if x.strip()]
+        # Extrae automáticamente todos los números (positivos, negativos, con o sin decimales)
+        # Esto permite al usuario pegar formatos como "[1.5; -2; 3]" o "Valores: 1, 2, 3" sin que falle.
+        numeros_str = re.findall(r'[-+]?\d*\.?\d+', datos_str)
+        datos = [float(x) for x in numeros_str]
+        
         if not datos:
             return None
             
