@@ -36,49 +36,51 @@ class Calculadora(tk.Tk):
         self.crear_interfaz_intereses()
         self.crear_interfaz_conversiones()
         self.crear_interfaz_figuras()
+        self.crear_interfaz_calculo()
+        self.crear_interfaz_estadistica()
 
         # Mostrar calculadora por defecto
         self.mostrar_calculadora()
 
+    def ocultar_todas(self):
+        for attr in ['frame_calc', 'frame_menu', 'frame_intereses', 'frame_conversiones', 'frame_figuras', 'frame_calculo', 'frame_estadistica']:
+            if hasattr(self, attr):
+                getattr(self, attr).pack_forget()
+
     def mostrar_calculadora(self):
-        self.frame_intereses.pack_forget()
-        self.frame_menu.pack_forget()
-        self.frame_conversiones.pack_forget()
-        self.frame_figuras.pack_forget()
+        self.ocultar_todas()
         self.frame_calc.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Científica")
 
     def mostrar_menu(self):
-        self.frame_calc.pack_forget()
-        self.frame_intereses.pack_forget()
-        self.frame_conversiones.pack_forget()
-        self.frame_figuras.pack_forget()
+        self.ocultar_todas()
         self.frame_menu.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Funciones")
 
     def mostrar_intereses(self):
-        self.frame_menu.pack_forget()
-        self.frame_calc.pack_forget()
-        self.frame_conversiones.pack_forget()
-        self.frame_figuras.pack_forget()
+        self.ocultar_todas()
         self.frame_intereses.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Intereses")
 
     def mostrar_conversiones(self):
-        self.frame_menu.pack_forget()
-        self.frame_calc.pack_forget()
-        self.frame_intereses.pack_forget()
-        self.frame_figuras.pack_forget()
+        self.ocultar_todas()
         self.frame_conversiones.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Conversiones")
 
     def mostrar_figuras(self):
-        self.frame_menu.pack_forget()
-        self.frame_calc.pack_forget()
-        self.frame_intereses.pack_forget()
-        self.frame_conversiones.pack_forget()
+        self.ocultar_todas()
         self.frame_figuras.pack(fill="both", expand=True)
         self.title("Calculadora Tocha - Figuras")
+
+    def mostrar_calculo(self):
+        self.ocultar_todas()
+        self.frame_calculo.pack(fill="both", expand=True)
+        self.title("Calculadora Tocha - Cálculo")
+
+    def mostrar_estadistica(self):
+        self.ocultar_todas()
+        self.frame_estadistica.pack(fill="both", expand=True)
+        self.title("Calculadora Tocha - Estadística")
 
     def crear_interfaz_calculadora(self):
         self.frame_calc = tk.Frame(self.container, bg="#1C1C1E")
@@ -139,7 +141,9 @@ class Calculadora(tk.Tk):
         # Lista de funciones (se pueden agregar más aquí)
         lista_funciones = [
             ("Conversiones", self.mostrar_conversiones),
+            ("Estadística", self.mostrar_estadistica),
             ("Figuras Geométricas", self.mostrar_figuras),
+            ("Integrales y Derivadas", self.mostrar_calculo),
             ("Intereses", self.mostrar_intereses),
         ]
         # Orden alfabético
@@ -477,6 +481,112 @@ class Calculadora(tk.Tk):
             self.lbl_res_fig.config(text=f"{op}: {res_formateado}{unidades}", fg="#32D74B")
         except Exception:
             self.lbl_res_fig.config(text="Error en los datos", fg="#FF453A")
+
+    def crear_interfaz_calculo(self):
+        self.frame_calculo = tk.Frame(self.container, bg="#1C1C1E")
+        
+        btn_back = tk.Button(self.frame_calculo, text="Volver", font=("Segoe UI", 10, "bold"), 
+                             bg="#3A3A3C", fg="white", bd=0, padx=10, pady=5, command=self.mostrar_menu)
+        btn_back.pack(anchor="w", padx=20, pady=20)
+
+        tk.Label(self.frame_calculo, text="Cálculo Simbólico", font=("Segoe UI", 24, "bold"), bg="#1C1C1E", fg="white").pack(pady=(0, 20))
+
+        label_style = {"font": ("Segoe UI", 11), "bg": "#1C1C1E", "fg": "#8E8E93"}
+        entry_style = {"font": ("Segoe UI", 16), "bg": "#2C2C2E", "fg": "white", "insertbackground": "white", "bd": 0, "justify": "center"}
+
+        tk.Label(self.frame_calculo, text="Expresión en X (ej: x**2 + 2*x)", **label_style).pack()
+        self.ent_expr = tk.Entry(self.frame_calculo, **entry_style)
+        self.ent_expr.pack(pady=5, padx=50, fill="x", ipady=8)
+
+        tk.Label(self.frame_calculo, text="Operación", **label_style).pack(pady=(15, 0))
+        self.combo_calculo = ttk.Combobox(self.frame_calculo, values=["Derivada", "Integral Indefinida", "Integral Definida"], state="readonly", font=("Segoe UI", 12))
+        self.combo_calculo.set("Derivada")
+        self.combo_calculo.pack(pady=5, padx=50, fill="x")
+        self.combo_calculo.bind("<<ComboboxSelected>>", self.actualizar_inputs_calculo)
+
+        self.frame_limites = tk.Frame(self.frame_calculo, bg="#1C1C1E")
+
+        frame_a = tk.Frame(self.frame_limites, bg="#1C1C1E")
+        frame_a.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        tk.Label(frame_a, text="Límite Inf (a)", **label_style).pack()
+        self.ent_lim_a = tk.Entry(frame_a, **entry_style)
+        self.ent_lim_a.pack(fill="x")
+
+        frame_b = tk.Frame(self.frame_limites, bg="#1C1C1E")
+        frame_b.pack(side="right", fill="x", expand=True, padx=(5, 0))
+        tk.Label(frame_b, text="Límite Sup (b)", **label_style).pack()
+        self.ent_lim_b = tk.Entry(frame_b, **entry_style)
+        self.ent_lim_b.pack(fill="x")
+
+        tk.Button(self.frame_calculo, text="Resolver", font=self.btn_font, bg="#FF2D55", fg="white", bd=0, padx=20, pady=10, 
+                  command=self.resolver_calculo).pack(pady=20)
+
+        self.lbl_res_calculo = tk.Label(self.frame_calculo, text="Resultado: -", font=("Segoe UI", 16, "bold"), bg="#1C1C1E", fg="#32D74B", justify="center", wraplength=350)
+        self.lbl_res_calculo.pack(pady=10)
+
+    def actualizar_inputs_calculo(self, event=None):
+        if self.combo_calculo.get() == "Integral Definida":
+            self.frame_limites.pack(fill="x", padx=50, pady=15)
+        else:
+            self.frame_limites.pack_forget()
+
+    def resolver_calculo(self):
+        expr = self.ent_expr.get()
+        op = self.combo_calculo.get()
+        if not expr: return
+        
+        from Funciones.integrales_derivadas import calcular_derivada, calcular_integral_indefinida, calcular_integral_definida
+        
+        res = None
+        if op == "Derivada":
+            res = calcular_derivada(expr)
+        elif op == "Integral Indefinida":
+            res = calcular_integral_indefinida(expr)
+        elif op == "Integral Definida":
+            res = calcular_integral_definida(expr, self.ent_lim_a.get(), self.ent_lim_b.get())
+
+        if res is None or res == "Error":
+            self.lbl_res_calculo.config(text="Expresión inválida", fg="#FF453A")
+        else:
+            self.lbl_res_calculo.config(text=f"= {res}", fg="#32D74B")
+
+    def crear_interfaz_estadistica(self):
+        self.frame_estadistica = tk.Frame(self.container, bg="#1C1C1E")
+        
+        btn_back = tk.Button(self.frame_estadistica, text="Volver", font=("Segoe UI", 10, "bold"), 
+                             bg="#3A3A3C", fg="white", bd=0, padx=10, pady=5, command=self.mostrar_menu)
+        btn_back.pack(anchor="w", padx=20, pady=20)
+
+        tk.Label(self.frame_estadistica, text="Estadística", font=("Segoe UI", 24, "bold"), bg="#1C1C1E", fg="white").pack(pady=(0, 20))
+
+        label_style = {"font": ("Segoe UI", 11), "bg": "#1C1C1E", "fg": "#8E8E93"}
+        entry_style = {"font": ("Segoe UI", 14), "bg": "#2C2C2E", "fg": "white", "insertbackground": "white", "bd": 0, "justify": "center"}
+
+        tk.Label(self.frame_estadistica, text="Datos (ej: 12, 15, 12.5, 18)", **label_style).pack()
+        self.ent_datos = tk.Entry(self.frame_estadistica, **entry_style)
+        self.ent_datos.pack(pady=5, padx=20, fill="x", ipady=8)
+
+        tk.Button(self.frame_estadistica, text="Analizar", font=self.btn_font, bg="#007AFF", fg="white", bd=0, padx=20, pady=10, 
+                  command=self.resolver_estadistica).pack(pady=15)
+
+        self.lbl_res_est = tk.Label(self.frame_estadistica, text="", font=("Segoe UI", 14), bg="#1C1C1E", fg="#32D74B", justify="left")
+        self.lbl_res_est.pack(pady=10)
+
+    def resolver_estadistica(self):
+        datos = self.ent_datos.get()
+        from Funciones.estadistica import calcular_estadistica
+        res = calcular_estadistica(datos)
+        
+        if not res:
+            self.lbl_res_est.config(text="Datos inválidos", fg="#FF453A")
+        else:
+            texto = ""
+            for k, v in res.items():
+                if isinstance(v, float):
+                    texto += f"{k}: {v:,.4f}\n"
+                else:
+                    texto += f"{k}: {v}\n"
+            self.lbl_res_est.config(text=texto, fg="#32D74B")
 
     def click_boton(self, texto):
         if self.pantalla.get() == "Error":
