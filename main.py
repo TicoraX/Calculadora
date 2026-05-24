@@ -105,6 +105,7 @@ class Calculadora(tk.Tk):
         self.crear_interfaz_conversiones()
         self.crear_interfaz_figuras()
         self.crear_interfaz_calculo()
+        self.crear_interfaz_historial()
         self.crear_interfaz_estadistica()
 
         # Mostrar calculadora por defecto
@@ -238,6 +239,7 @@ class Calculadora(tk.Tk):
         # Lista de funciones (se pueden agregar más aquí)
         lista_funciones = [
             ("Conversiones", self.mostrar_conversiones),
+            ("Historial", self.mostrar_historial),
             ("Estadística", self.mostrar_estadistica),
             ("Figuras Geométricas", self.mostrar_figuras),
             ("Integrales y Derivadas", self.mostrar_calculo),
@@ -322,6 +324,25 @@ class Calculadora(tk.Tk):
         # Área de detalles (oculta por defecto)
         self.txt_detalles = tk.Text(self.frame_intereses, height=6, bg="#121212", fg="#E5E5EA", bd=0, font=("Segoe UI", 10), wrap='word')
         self.txt_detalles.config(state='disabled')
+
+    def crear_interfaz_historial(self):
+        self.frame_historial = tk.Frame(self.container, bg="#1C1C1E")
+        btn_back = tk.Button(self.frame_historial, text="Volver", font=("Segoe UI", 10, "bold"), 
+                             bg="#3A3A3C", fg="white", bd=0, padx=10, pady=5, command=self.mostrar_menu)
+        btn_back.pack(anchor="w", padx=20, pady=20)
+
+        tk.Label(self.frame_historial, text="Historial de Cálculos", font=("Segoe UI", 24, "bold"), bg="#1C1C1E", fg="white").pack(pady=(0, 10))
+
+        # Controles
+        ctrl_f = tk.Frame(self.frame_historial, bg="#1C1C1E")
+        ctrl_f.pack(fill='x', padx=20)
+        tk.Button(ctrl_f, text="Refrescar", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self._refresh_historial).pack(side='left', padx=6)
+        tk.Button(ctrl_f, text="Limpiar historial", font=("Segoe UI", 10), bg="#FF3B30", fg="white", bd=0, padx=10, pady=6, command=self.clear_history).pack(side='left', padx=6)
+
+        # Área de visualización
+        self.txt_hist = tk.Text(self.frame_historial, bg="#0B0B0C", fg="#E5E5EA", bd=0, font=("Segoe UI", 10), wrap='word')
+        self.txt_hist.pack(padx=20, pady=10, fill='both', expand=True)
+        self.txt_hist.config(state='disabled')
 
     def calcular_int(self, tipo):
         # Validación de entradas
@@ -594,6 +615,72 @@ class Calculadora(tk.Tk):
                 self.txt_detalles.pack_forget()
             except Exception:
                 pass
+
+    def mostrar_historial(self):
+        self.ocultar_todas()
+        self.frame_historial.pack(fill="both", expand=True)
+        self.title("Calculadora Tocha - Historial")
+        self._refresh_historial()
+
+    def _refresh_historial(self):
+        try:
+            entries = self.load_history_entries()
+            self.txt_hist.config(state='normal')
+            self.txt_hist.delete('1.0', tk.END)
+            if not entries:
+                self.txt_hist.insert(tk.END, "(Sin entradas en el historial)")
+            else:
+                # mostrar en orden cronológico inverso (último primero)
+                for e in reversed(entries[-200:]):
+                    try:
+                        t = e.get('timestamp', '')
+                        typ = e.get('type', '')
+                        self.txt_hist.insert(tk.END, f"[{t}] {typ}: ")
+                        # añadir detalles resumidos
+                        ent_copy = dict(e)
+                        ent_copy.pop('timestamp', None)
+                        ent_copy.pop('type', None)
+                        self.txt_hist.insert(tk.END, json.dumps(ent_copy, ensure_ascii=False))
+                        self.txt_hist.insert(tk.END, "\n\n")
+                    except Exception:
+                        continue
+            self.txt_hist.config(state='disabled')
+        except Exception:
+            try:
+                self.txt_hist.config(state='normal')
+                self.txt_hist.delete('1.0', tk.END)
+                self.txt_hist.insert(tk.END, "Error leyendo historial")
+                self.txt_hist.config(state='disabled')
+            except Exception:
+                pass
+
+    def load_history_entries(self):
+        path = os.path.join(os.getcwd(), 'history.json')
+        if not os.path.exists(path):
+            return []
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                return data
+            return []
+        except Exception:
+            return []
+
+    def clear_history(self):
+        try:
+            path = os.path.join(os.getcwd(), 'history.json')
+            if os.path.exists(path):
+                os.remove(path)
+            try:
+                self.txt_hist.config(state='normal')
+                self.txt_hist.delete('1.0', tk.END)
+                self.txt_hist.insert(tk.END, "(Historial limpio)")
+                self.txt_hist.config(state='disabled')
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     def copy_result(self):
         try:

@@ -34,6 +34,16 @@ python -m unittest discover -v tests
 - Intereses simples y compuestos con opción de frecuencia de capitalización.
 - Tooltips, copia de resultados y área de detalles para los cálculos financieros.
 
+## Historial (`history.json`)
+
+La aplicación guarda un historial de las acciones importantes en `history.json` en la raíz del proyecto. Cada entrada es un objeto JSON con al menos las claves:
+
+- `timestamp`: ISO8601 UTC (ej: `2026-05-23T12:00:00Z`)
+- `type`: `interes`, `conversion`, `copy`, u otros tipos de entrada
+- campos adicionales según el tipo (por ejemplo `P`, `r`, `t_years`, `total` para `interes`)
+
+Se mantiene un máximo de 1000 entradas por defecto. Puedes ver y limpiar el historial desde la interfaz: abre `Funciones` → `Historial`.
+
 ## Sugerencias
 - Para empaquetar la app en un ejecutable, considera usar `pyinstaller` o `py2app`.
 - Añadir tests adicionales para la UI y las funciones de conversión si se desea mayor cobertura.
