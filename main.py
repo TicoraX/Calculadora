@@ -5,6 +5,7 @@ import math
 import re
 import os
 import json
+from datetime import datetime
 from core.evaluator import safe_eval
 from Funciones.cientifica import (
     seno,
@@ -410,6 +411,22 @@ class Calculadora(tk.Tk):
                     self.txt_detalles.pack(padx=50, pady=(10, 0), fill='x')
                 else:
                     self.txt_detalles.pack_forget()
+                # Guardar en historial
+                try:
+                    entry = {
+                        'timestamp': datetime.utcnow().isoformat() + 'Z',
+                        'type': 'interes',
+                        'method': tipo,
+                        'P': c,
+                        'r': R,
+                        't_years': t_years,
+                        'n': n,
+                        'total': float(total),
+                        'ganancia': float(ganancia) if tipo != 'simple' else float(res)
+                    }
+                    self.save_history(entry)
+                except Exception:
+                    pass
             except Exception:
                 pass
         except Exception:
@@ -549,6 +566,20 @@ class Calculadora(tk.Tk):
                 return
 
             self.lbl_res_conv.config(text=texto, fg="#32D74B")
+            # Guardar en historial
+            try:
+                entry = {
+                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'type': 'conversion',
+                    'category': cat,
+                    'from': de_u,
+                    'to': a_u,
+                    'input': float(val),
+                    'result': float(res)
+                }
+                self.save_history(entry)
+            except Exception:
+                pass
         except Exception:
             self.lbl_res_conv.config(text="Error en la conversión", fg="#FF453A")
 
@@ -571,6 +602,16 @@ class Calculadora(tk.Tk):
                 text = self.lbl_res_int.cget('text')
             self.clipboard_clear()
             self.clipboard_append(str(text))
+            # Guardar acción de copia en historial
+            try:
+                entry = {
+                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'type': 'copy',
+                    'content': str(text)
+                }
+                self.save_history(entry)
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -853,6 +894,29 @@ class Calculadora(tk.Tk):
             elif depth == 0 and ch in '+-*/':
                 return i, ch
         return None, None
+
+    def save_history(self, entry: dict):
+        """Append an entry to history.json in the workspace root.
+
+        Entry should be a serializable dict. The file stores a list of entries.
+        """
+        try:
+            path = os.path.join(os.getcwd(), 'history.json')
+            data = []
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        data = json.load(f) or []
+                except Exception:
+                    data = []
+            data.append(entry)
+            # keep last 1000 entries to avoid unbounded growth
+            if isinstance(data, list) and len(data) > 1000:
+                data = data[-1000:]
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
     def actualizar_inputs_calculo(self, event=None):
         if self.combo_calculo.get() == "Integral Definida":
