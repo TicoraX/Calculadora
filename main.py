@@ -5,6 +5,7 @@ import math
 import re
 import os
 import json
+from core.evaluator import safe_eval
 from Funciones.cientifica import (
     seno,
     coseno,
@@ -21,6 +22,57 @@ from Funciones.cientifica import (
 )
 from Funciones.simples import raiz_cuadrada
 from Funciones.intereses import interes_simple, interes_compuesto
+
+# Helper simple para tooltips
+class ToolTip:
+    def __init__(self, widget, text, delay=500):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self._id = None
+        self.tipwindow = None
+        widget.bind("<Enter>", self._schedule)
+        widget.bind("<Leave>", self._unschedule)
+        widget.bind("<ButtonPress>", self._unschedule)
+
+    def _schedule(self, event=None):
+        self._unschedule()
+        try:
+            self._id = self.widget.after(self.delay, self.showtip)
+        except Exception:
+            self._id = None
+
+    def _unschedule(self, event=None):
+        if self._id:
+            try:
+                self.widget.after_cancel(self._id)
+            except Exception:
+                pass
+            self._id = None
+        self.hidetip()
+
+    def showtip(self):
+        if self.tipwindow:
+            return
+        try:
+            x = self.widget.winfo_rootx() + 20
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 10
+            self.tipwindow = tw = tk.Toplevel(self.widget)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            label = tk.Label(tw, text=self.text, justify='left', background="#FFFFE0", relief='solid', borderwidth=1, font=("Segoe UI", 9))
+            label.pack(ipadx=4, ipady=2)
+        except Exception:
+            pass
+
+    def hidetip(self):
+        if self.tipwindow:
+            try:
+                self.tipwindow.destroy()
+            except Exception:
+                pass
+            self.tipwindow = None
+
 
 class Calculadora(tk.Tk):
     def __init__(self):
@@ -214,6 +266,7 @@ class Calculadora(tk.Tk):
         tk.Label(self.frame_intereses, text="Capital Inicial ($)", **label_style).pack()
         self.ent_capital = tk.Entry(self.frame_intereses, **entry_style)
         self.ent_capital.pack(pady=5, padx=50, fill="x", ipady=8)
+        ToolTip(self.ent_capital, "Capital inicial en la moneda local, sin símbolos. Ej: 1000")
 
         # Tasa con flechita (Combobox)
         tk.Label(self.frame_intereses, text="Tasa de Interés (%)", **label_style).pack(pady=(15, 0))
@@ -221,9 +274,11 @@ class Calculadora(tk.Tk):
         tasa_f.pack(fill="x", padx=50)
         self.ent_tasa = tk.Entry(tasa_f, **entry_style)
         self.ent_tasa.pack(side="left", fill="x", expand=True, ipady=8)
+        ToolTip(self.ent_tasa, "Tasa en porcentaje (ej: 5 = 5%)")
         self.combo_tasa = ttk.Combobox(tasa_f, values=["Anual", "Mensual"], state="readonly", width=8, font=("Segoe UI", 12))
         self.combo_tasa.set("Anual")
         self.combo_tasa.pack(side="left", padx=(5, 0))
+        ToolTip(self.combo_tasa, "Periodo de la tasa (Anual/Mensual)")
 
         # Tiempo con flechita (Combobox)
         tk.Label(self.frame_intereses, text="Tiempo", **label_style).pack(pady=(15, 0))
@@ -231,9 +286,19 @@ class Calculadora(tk.Tk):
         tiempo_f.pack(fill="x", padx=50)
         self.ent_tiempo = tk.Entry(tiempo_f, **entry_style)
         self.ent_tiempo.pack(side="left", fill="x", expand=True, ipady=8)
+        ToolTip(self.ent_tiempo, "Tiempo numérico (según selección)")
         self.combo_tiempo = ttk.Combobox(tiempo_f, values=["Años", "Meses", "Días"], state="readonly", width=8, font=("Segoe UI", 12))
         self.combo_tiempo.set("Meses")
         self.combo_tiempo.pack(side="left", padx=(5, 0))
+        ToolTip(self.combo_tiempo, "Unidad de tiempo (Años/Meses/Días)")
+        # Frecuencia de capitalización
+        tk.Label(self.frame_intereses, text="Frecuencia (n/año)", **label_style).pack(pady=(10, 0))
+        freq_f = tk.Frame(self.frame_intereses, bg="#1C1C1E")
+        freq_f.pack(fill="x", padx=50)
+        self.combo_freq = ttk.Combobox(freq_f, values=["Anual (1)", "Semestral (2)", "Trimestral (4)", "Mensual (12)", "Diaria (365)"], state="readonly", width=18, font=("Segoe UI", 12))
+        self.combo_freq.set("Mensual (12)")
+        self.combo_freq.pack(side="left", padx=(0, 0))
+        ToolTip(self.combo_freq, "Frecuencia de capitalización por año. Ej: Mensual = 12")
 
         # Botones de cálculo
         btn_f = tk.Frame(self.frame_intereses, bg="#1C1C1E")
@@ -245,41 +310,110 @@ class Calculadora(tk.Tk):
 
         self.lbl_res_int = tk.Label(self.frame_intereses, text="Resultado: $0", font=("Segoe UI", 18, "bold"), bg="#1C1C1E", fg="#32D74B", justify="center")
         self.lbl_res_int.pack(pady=10)
+        # Acciones: copiar resultado y mostrar detalles
+        acciones_f = tk.Frame(self.frame_intereses, bg="#1C1C1E")
+        acciones_f.pack()
+        tk.Button(acciones_f, text="Copiar", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=12, pady=6, command=self.copy_result).pack(side='left', padx=6)
+        self.show_details_var = tk.BooleanVar(value=False)
+        cb = tk.Checkbutton(acciones_f, text="Mostrar detalles", variable=self.show_details_var, bg="#1C1C1E", fg="white", selectcolor="#1C1C1E", command=self._toggle_detalles)
+        cb.pack(side='left', padx=6)
+
+        # Área de detalles (oculta por defecto)
+        self.txt_detalles = tk.Text(self.frame_intereses, height=6, bg="#121212", fg="#E5E5EA", bd=0, font=("Segoe UI", 10), wrap='word')
+        self.txt_detalles.config(state='disabled')
 
     def calcular_int(self, tipo):
+        # Validación de entradas
+        cap_text = self.ent_capital.get().strip()
+        tasa_text = self.ent_tasa.get().strip()
+        tiempo_text = self.ent_tiempo.get().strip()
+        if not cap_text or not tasa_text or not tiempo_text:
+            self.lbl_res_int.config(text="Complete todos los campos", fg="#FF453A")
+            return
         try:
-            c = float(self.ent_capital.get().replace(',', ''))
-            rate_val = float(self.ent_tasa.get()) / 100
-            time_val = float(self.ent_tiempo.get())
-            
-            rate_period = self.combo_tasa.get()
-            time_period = self.combo_tiempo.get()
+            c = float(cap_text.replace(',', ''))
+            rate_val = float(tasa_text) / 100
+            time_val = float(tiempo_text)
+        except ValueError:
+            self.lbl_res_int.config(text="Valores numéricos inválidos", fg="#FF453A")
+            return
 
-            # Normalización: Convertir la tasa al periodo del tiempo seleccionado
-            # Si el tiempo es en Meses, necesitamos la tasa mensual
+        if time_val < 0 or c < 0:
+            self.lbl_res_int.config(text="Valores deben ser positivos", fg="#FF453A")
+            return
+
+        rate_period = self.combo_tasa.get() or "Anual"
+        time_period = self.combo_tiempo.get() or "Meses"
+
+        # Usar tasa anual R (rate_val) y convertir tiempo a años
+        try:
+            R = rate_val  # tasa anual en decimal
             if time_period == "Meses":
-                r = rate_val if rate_period == "Mensual" else rate_val / 12
-                t = time_val
+                t_years = time_val / 12.0
             elif time_period == "Años":
-                r = rate_val if rate_period == "Anual" else rate_val * 12
-                t = time_val
+                t_years = time_val
             elif time_period == "Días":
-                # Asumiendo año de 365 días
-                r = rate_val / 365 if rate_period == "Anual" else rate_val / 30
-                t = time_val
-            
+                t_years = time_val / 365.0
+            else:
+                t_years = time_val
+
+            # Obtener frecuencia n desde combo
+            freq_text = getattr(self, 'combo_freq', None)
+            n = 1
+            if freq_text is not None:
+                sel = self.combo_freq.get()
+                # Extraer número entre paréntesis si existe
+                m = re.search(r"\((\d+)\)", sel)
+                if m:
+                    try:
+                        n = int(m.group(1))
+                    except Exception:
+                        n = 1
+
             if tipo == "simple":
-                res = interes_simple(c, r, t)
+                # Interés simple usando tasa anual y tiempo en años
+                res = interes_simple(c, R, t_years)
                 total = c + res
                 texto = f"Ganancia: ${res:,.2f}\nTotal: ${total:,.2f}"
+                detalles = (
+                    f"Interés simple:\n"
+                    f"I = P * r * t\n"
+                    f"P = {c:,.2f}, r = {R:.6f}, t(years) = {t_years:.6f}\n"
+                    f"I = {res:,.2f}\nTotal = {total:,.2f}"
+                )
             else:
-                total = interes_compuesto(c, r, t)
+                # Interés compuesto con frecuencia n
+                total = interes_compuesto(c, R, t_years, frecuencia=n)
                 ganancia = total - c
                 texto = f"Ganancia: ${ganancia:,.2f}\nTotal: ${total:,.2f}"
-            
+                detalles = (
+                    f"Interés compuesto:\n"
+                    f"A = P * (1 + r/n)^(n*t)\n"
+                    f"P = {c:,.2f}, r = {R:.6f}, n = {n}, t(years) = {t_years:.6f}\n"
+                    f"A = {total:,.2f}\nGanancia = {ganancia:,.2f}"
+                )
+
+            # Mostrar resultado
             self.lbl_res_int.config(text=texto, fg="#32D74B")
+            # Guardar último resultado para copiar
+            try:
+                self.last_int_result = str(total if tipo != "simple" else total)
+            except Exception:
+                self.last_int_result = texto
+            # Mostrar/ocultar detalles según la selección
+            try:
+                if getattr(self, 'show_details_var', tk.BooleanVar()).get():
+                    self.txt_detalles.config(state='normal')
+                    self.txt_detalles.delete('1.0', tk.END)
+                    self.txt_detalles.insert(tk.END, detalles)
+                    self.txt_detalles.config(state='disabled')
+                    self.txt_detalles.pack(padx=50, pady=(10, 0), fill='x')
+                else:
+                    self.txt_detalles.pack_forget()
+            except Exception:
+                pass
         except Exception:
-            self.lbl_res_int.config(text="Error en los datos", fg="#FF453A")
+            self.lbl_res_int.config(text="Error calculando interés", fg="#FF453A")
 
     def crear_interfaz_conversiones(self):
         self.frame_conversiones = tk.Frame(self.container, bg="#1C1C1E")
@@ -299,6 +433,7 @@ class Calculadora(tk.Tk):
         self.combo_categoria.set("Monedas")
         self.combo_categoria.pack(pady=5, padx=50, fill="x")
         self.combo_categoria.bind("<<ComboboxSelected>>", self.actualizar_opciones_conversion)
+        ToolTip(self.combo_categoria, "Categoría de conversión: Monedas, Pesos, Distancias")
 
         # Contenedor De y A
         frame_opciones = tk.Frame(self.frame_conversiones, bg="#1C1C1E")
@@ -310,6 +445,7 @@ class Calculadora(tk.Tk):
         tk.Label(frame_de, text="De", **label_style).pack()
         self.combo_de = ttk.Combobox(frame_de, state="readonly", font=("Segoe UI", 12))
         self.combo_de.pack(fill="x")
+        ToolTip(self.combo_de, "Unidad origen")
 
         # A
         frame_a = tk.Frame(frame_opciones, bg="#1C1C1E")
@@ -317,11 +453,13 @@ class Calculadora(tk.Tk):
         tk.Label(frame_a, text="A", **label_style).pack()
         self.combo_a = ttk.Combobox(frame_a, state="readonly", font=("Segoe UI", 12))
         self.combo_a.pack(fill="x")
+        ToolTip(self.combo_a, "Unidad destino")
 
         # Cantidad
         tk.Label(self.frame_conversiones, text="Cantidad", **label_style).pack(pady=(10, 0))
         self.ent_cantidad = tk.Entry(self.frame_conversiones, **entry_style)
         self.ent_cantidad.pack(pady=5, padx=50, fill="x", ipady=8)
+        ToolTip(self.ent_cantidad, "Cantidad numérica a convertir. Use punto para decimales")
 
         # Botón Calcular
         tk.Button(self.frame_conversiones, text="Convertir", font=self.btn_font, bg="#32D74B", fg="white", bd=0, padx=20, pady=10, 
@@ -366,29 +504,75 @@ class Calculadora(tk.Tk):
             self.combo_a.set("Millas")
 
     def calcular_conversion(self):
+        cat = self.combo_categoria.get()
+        val_text = self.ent_cantidad.get().strip()
+        if not val_text:
+            self.lbl_res_conv.config(text="Ingrese una cantidad", fg="#FF453A")
+            return
         try:
-            val = float(self.ent_cantidad.get().replace(',', ''))
-            cat = self.combo_categoria.get()
+            val = float(val_text.replace(',', ''))
+        except ValueError:
+            self.lbl_res_conv.config(text="Cantidad inválida", fg="#FF453A")
+            return
+
+        from Funciones.conversiones import convertir_moneda, convertir_peso, convertir_distancia
+
+        try:
             de_u = self.combo_de.get()
             a_u = self.combo_a.get()
-            
-            from Funciones.conversiones import convertir_moneda, convertir_peso, convertir_distancia
-
             if cat == "Monedas":
+                if not self.tasas_monedas:
+                    self.lbl_res_conv.config(text="No se pudieron obtener tasas", fg="#FF453A")
+                    return
+                if de_u not in self.tasas_monedas or a_u not in self.tasas_monedas:
+                    self.lbl_res_conv.config(text="Moneda no soportada", fg="#FF453A")
+                    return
                 res = convertir_moneda(val, de_u, a_u, self.tasas_monedas)
                 if res is None:
-                    raise ValueError("Error API")
+                    self.lbl_res_conv.config(text="Error al convertir (API)", fg="#FF453A")
+                    return
                 texto = f"{val:,.2f} {de_u} =\n{res:,.2f} {a_u}"
             elif cat == "Pesos":
+                if not de_u or not a_u:
+                    self.lbl_res_conv.config(text="Seleccione unidades", fg="#FF453A")
+                    return
                 res = convertir_peso(val, de_u, a_u)
                 texto = f"{val:,.2f} {de_u} =\n{res:,.4f} {a_u}"
             elif cat == "Distancias":
+                if not de_u or not a_u:
+                    self.lbl_res_conv.config(text="Seleccione unidades", fg="#FF453A")
+                    return
                 res = convertir_distancia(val, de_u, a_u)
                 texto = f"{val:,.2f} {de_u} =\n{res:,.4f} {a_u}"
-            
+            else:
+                self.lbl_res_conv.config(text="Categoría inválida", fg="#FF453A")
+                return
+
             self.lbl_res_conv.config(text=texto, fg="#32D74B")
         except Exception:
-            self.lbl_res_conv.config(text="Error en los datos", fg="#FF453A")
+            self.lbl_res_conv.config(text="Error en la conversión", fg="#FF453A")
+
+    def _toggle_detalles(self):
+        if getattr(self, 'show_details_var', None) and self.show_details_var.get():
+            try:
+                self.txt_detalles.pack(padx=50, pady=(10, 0), fill='x')
+            except Exception:
+                pass
+        else:
+            try:
+                self.txt_detalles.pack_forget()
+            except Exception:
+                pass
+
+    def copy_result(self):
+        try:
+            text = getattr(self, 'last_int_result', None)
+            if not text:
+                text = self.lbl_res_int.cget('text')
+            self.clipboard_clear()
+            self.clipboard_append(str(text))
+        except Exception:
+            pass
 
     def crear_interfaz_figuras(self):
         self.frame_figuras = tk.Frame(self.container, bg="#1C1C1E")
@@ -760,7 +944,10 @@ class Calculadora(tk.Tk):
                 'logaritmo_Natural': logaritmo_Natural,
                 'factorial': factorial,
                 'raiz_cuadrada': raiz_cuadrada,
-                'math': math
+                'math': math,
+                'pi': math.pi,
+                'e': math.e,
+                'π': math.pi
             }
             idx, op = self._find_last_op_outside_parens(exp_now)
             if idx is not None:
@@ -768,7 +955,7 @@ class Calculadora(tk.Tk):
                 right_part = exp_now[idx+1:].strip()
                 try:
                     if right_part.startswith('(') and right_part.endswith(')'):
-                        b_val = float(eval(right_part, {"__builtins__": __builtins__}, contexto))
+                        b_val = float(safe_eval(right_part, contexto))
                     else:
                         mnum = re.match(r"^\(?\s*(\d+(?:\.\d+)?)\s*\)?$", right_part)
                         if mnum:
@@ -779,7 +966,7 @@ class Calculadora(tk.Tk):
                                 return
                             b_val = float(m2.group(1))
 
-                    base_val = float(eval(left_expr, {"__builtins__": __builtins__}, contexto))
+                    base_val = float(safe_eval(left_expr, contexto))
                     if op in ['+', '-']:
                         percent = base_val * b_val / 100.0
                     else:
@@ -812,8 +999,7 @@ class Calculadora(tk.Tk):
                 exp = exp_orig
                 
                 # Constantes
-                exp = exp.replace('π', 'math.pi')
-                exp = re.sub(r'\be\b', 'math.e', exp)
+                exp = exp.replace('π', 'pi')
 
                 # Funciones (orden importante: primero las inversas para evitar colisiones)
                 exp = re.sub(r'\basin\b', 'seno_inverso', exp)
@@ -834,7 +1020,7 @@ class Calculadora(tk.Tk):
                 # Factorial
                 exp = re.sub(r'(\d+(?:\.\d+)?)!', r'factorial(\1)', exp)
                 
-                # Contexto cerrado para eval
+                # Contexto cerrado para evaluación segura
                 contexto = {
                     'seno': seno,
                     'coseno': coseno,
@@ -849,10 +1035,11 @@ class Calculadora(tk.Tk):
                     'exponencial': exponencial,
                     'absoluto': absoluto,
                     'potencia': potencia,
-                    'math': math
+                    'math': math,
+                    'pi': math.pi,
+                    'e': math.e
                 }
-                
-                res = str(eval(exp, {"__builtins__": __builtins__}, contexto))
+                res = str(safe_eval(exp, contexto))
                 if res.endswith(".0"):
                     res = res[:-2]
                 self.historial.config(text=exp_orig + " =")
