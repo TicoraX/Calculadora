@@ -5,6 +5,7 @@ import math
 import re
 import os
 import json
+import csv
 from datetime import datetime
 from core.evaluator import safe_eval
 from Funciones.cientifica import (
@@ -163,6 +164,13 @@ class Calculadora(tk.Tk):
         # Historial
         self.historial = tk.Label(self.frame_calc, text="", font=self.hist_font, bg="#1C1C1E", fg="#8E8E93", justify="right", anchor="e")
         self.historial.pack(fill="x", padx=20, pady=(10, 0))
+        # Preview pequeño del historial (últimas 3 entradas)
+        self.hist_preview = tk.Label(self.frame_calc, text="", font=self.label_font, bg="#1C1C1E", fg="#6B6B70", justify="right", anchor="e")
+        self.hist_preview.pack(fill="x", padx=20, pady=(2, 8))
+        try:
+            self._update_hist_preview()
+        except Exception:
+            pass
 
         # Memoria (M+, M-, MR) + indicador
         mem_frame = tk.Frame(self.frame_calc, bg="#1C1C1E")
@@ -338,6 +346,7 @@ class Calculadora(tk.Tk):
         ctrl_f.pack(fill='x', padx=20)
         tk.Button(ctrl_f, text="Refrescar", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self._refresh_historial).pack(side='left', padx=6)
         tk.Button(ctrl_f, text="Limpiar historial", font=("Segoe UI", 10), bg="#FF3B30", fg="white", bd=0, padx=10, pady=6, command=self.clear_history).pack(side='left', padx=6)
+        tk.Button(ctrl_f, text="Exportar CSV", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self.export_history_csv).pack(side='left', padx=6)
 
         # Área de visualización
         self.txt_hist = tk.Text(self.frame_historial, bg="#0B0B0C", fg="#E5E5EA", bd=0, font=("Segoe UI", 10), wrap='word')
@@ -645,6 +654,11 @@ class Calculadora(tk.Tk):
                     except Exception:
                         continue
             self.txt_hist.config(state='disabled')
+            # actualizar preview en pantalla principal si existe
+            try:
+                self._update_hist_preview()
+            except Exception:
+                pass
         except Exception:
             try:
                 self.txt_hist.config(state='normal')
@@ -681,6 +695,59 @@ class Calculadora(tk.Tk):
                 pass
         except Exception:
             pass
+
+    def export_history_csv(self):
+        try:
+            entries = self.load_history_entries()
+            if not entries:
+                return
+            # Determinar conjunto de claves
+            keys = set()
+            for e in entries:
+                if isinstance(e, dict):
+                    keys.update(e.keys())
+            keys = list(keys)
+            csv_path = os.path.join(os.getcwd(), 'history.csv')
+            with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=keys)
+                writer.writeheader()
+                for e in entries:
+                    try:
+                        writer.writerow({k: e.get(k, '') for k in keys})
+                    except Exception:
+                        continue
+            # notificar al usuario mediante el área de historial
+            try:
+                self.txt_hist.config(state='normal')
+                self.txt_hist.insert(tk.END, f"\nExportado CSV: {csv_path}\n")
+                self.txt_hist.config(state='disabled')
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _update_hist_preview(self):
+        try:
+            entries = self.load_history_entries()
+            if not entries:
+                self.hist_preview.config(text='Historial vacío')
+                return
+            last = entries[-3:]
+            lines = []
+            for e in last:
+                t = e.get('timestamp', '')
+                typ = e.get('type', '')
+                snippet = ''
+                if 'total' in e:
+                    snippet = f"total={e.get('total')}"
+                elif 'result' in e:
+                    snippet = f"result={e.get('result')}"
+                elif 'content' in e:
+                    snippet = str(e.get('content'))
+                lines.append(f"{typ}:{snippet}")
+            self.hist_preview.config(text=' | '.join(lines))
+        except Exception:
+            self.hist_preview.config(text='')
 
     def copy_result(self):
         try:
