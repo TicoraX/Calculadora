@@ -1,8 +1,43 @@
-# En este repositorio hay una calculadora simple con apartado cientifico
-# la idea es ir mejorandola poco a poco, por ahora tiene lo basico, mas el apartado cientifico.
-# las funciones que tiene son: suma, resta, multiplicacion, division, potencia, raiz, seno, coseno, tangente, logaritmo en base 10 y logaritmo natural.
-# los botones estan distribuidos en 7 filas y 4 columnas.
+# Calculadora Tocha
 
-# El objetivo es que poco a poco vaya añadiendo mas opciones y funciones, ademas de que sea mas atractiva visualmente.
-# Se busca que haya multiples apartados, como el cientifico, el de estadistica, el de geometria, intereses, conversor de monedas, etc.
-# 
+Calculadora de escritorio en Python con interfaz Tkinter: modos simple y científica, memoria persistente, conversiones, y herramientas financieras.
+
+## Requisitos
+- Python 3.10+ (se probó con CPython 3.14)
+- `ruff` para lint opcional (incluido en `requirements.txt`)
+
+Instalar dependencias (opcional):
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+## Ejecutar la aplicación
+
+```bash
+python main.py
+```
+
+La app usa solamente la stdlib (Tkinter, math, json). Algunas funciones (conversiones de moneda) intentan conectarse a una API pública — hay una caché local en `Funciones/rates_cache.json`.
+
+## Ejecutar tests
+
+```bash
+python -m unittest discover -v tests
+```
+
+## Características añadidas
+- Evaluador seguro de expresiones (`core/evaluator.py`) usado en la UI en vez de `eval()`.
+- Manejo de memoria con persistencia (`memory.json`).
+- Botón `%` robusto (maneja paréntesis y parsing seguro).
+- Conversión de monedas con caché y respaldo cuando la API falla.
+- Intereses simples y compuestos con opción de frecuencia de capitalización.
+- Tooltips, copia de resultados y área de detalles para los cálculos financieros.
+
+## Sugerencias
+- Para empaquetar la app en un ejecutable, considera usar `pyinstaller` o `py2app`.
+- Añadir tests adicionales para la UI y las funciones de conversión si se desea mayor cobertura.
+
+---
+
+Para cualquier cambio, crea un branch y abre un PR; puedo ayudar a preparar el PR o crear un release si quieres.
