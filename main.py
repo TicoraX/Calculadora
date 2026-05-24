@@ -165,8 +165,11 @@ class Calculadora(tk.Tk):
         self.historial = tk.Label(self.frame_calc, text="", font=self.hist_font, bg="#1C1C1E", fg="#8E8E93", justify="right", anchor="e")
         self.historial.pack(fill="x", padx=20, pady=(10, 0))
         # Preview pequeño del historial (últimas 3 entradas)
-        self.hist_preview = tk.Label(self.frame_calc, text="", font=self.label_font, bg="#1C1C1E", fg="#6B6B70", justify="right", anchor="e")
-        self.hist_preview.pack(fill="x", padx=20, pady=(2, 8))
+        preview_f = tk.Frame(self.frame_calc, bg="#1C1C1E")
+        preview_f.pack(fill="x", padx=20, pady=(2, 8))
+        self.hist_preview = tk.Label(preview_f, text="", font=self.label_font, bg="#1C1C1E", fg="#6B6B70", justify="right", anchor="e")
+        self.hist_preview.pack(side='left', fill='x', expand=True)
+        tk.Button(preview_f, text="Limpiar", font=("Segoe UI", 9), bg="#FF3B30", fg="white", bd=0, padx=8, pady=4, command=self.clear_history).pack(side='right', padx=(6,0))
         try:
             self._update_hist_preview()
         except Exception:
@@ -347,6 +350,8 @@ class Calculadora(tk.Tk):
         tk.Button(ctrl_f, text="Refrescar", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self._refresh_historial).pack(side='left', padx=6)
         tk.Button(ctrl_f, text="Limpiar historial", font=("Segoe UI", 10), bg="#FF3B30", fg="white", bd=0, padx=10, pady=6, command=self.clear_history).pack(side='left', padx=6)
         tk.Button(ctrl_f, text="Exportar CSV", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self.export_history_csv).pack(side='left', padx=6)
+        tk.Button(ctrl_f, text="Importar CSV", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self.import_history_csv).pack(side='left', padx=6)
+        tk.Button(ctrl_f, text="Importar JSON", font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, padx=10, pady=6, command=self.import_history_json).pack(side='left', padx=6)
 
         # Área de visualización
         self.txt_hist = tk.Text(self.frame_historial, bg="#0B0B0C", fg="#E5E5EA", bd=0, font=("Segoe UI", 10), wrap='word')
@@ -693,6 +698,38 @@ class Calculadora(tk.Tk):
                 self.txt_hist.config(state='disabled')
             except Exception:
                 pass
+            try:
+                self._update_hist_preview()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def import_history_json(self):
+        # Import entries from history.json backup file (history_import.json) if present
+        try:
+            import_path = os.path.join(os.getcwd(), 'history_import.json')
+            if not os.path.exists(import_path):
+                return
+            with open(import_path, 'r', encoding='utf-8') as f:
+                data = json.load(f) or []
+            if not isinstance(data, list):
+                return
+            path = os.path.join(os.getcwd(), 'history.json')
+            existing = []
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        existing = json.load(f) or []
+                except Exception:
+                    existing = []
+            existing.extend(data)
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(existing, f, ensure_ascii=False, indent=2)
+            try:
+                self._refresh_historial()
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -721,6 +758,53 @@ class Calculadora(tk.Tk):
                 self.txt_hist.config(state='normal')
                 self.txt_hist.insert(tk.END, f"\nExportado CSV: {csv_path}\n")
                 self.txt_hist.config(state='disabled')
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def import_history_csv(self):
+        # Import entries from history.csv (if present) and append to history.json
+        try:
+            csv_path = os.path.join(os.getcwd(), 'history.csv')
+            if not os.path.exists(csv_path):
+                return
+            with open(csv_path, 'r', newline='', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                to_add = []
+                for row in reader:
+                    parsed = {}
+                    for k, v in row.items():
+                        if v is None:
+                            parsed[k] = None
+                            continue
+                        v = v.strip()
+                        try:
+                            parsed[k] = int(v)
+                            continue
+                        except Exception:
+                            pass
+                        try:
+                            parsed[k] = float(v)
+                            continue
+                        except Exception:
+                            pass
+                        parsed[k] = v
+                    to_add.append(parsed)
+            # Append to existing history
+            path = os.path.join(os.getcwd(), 'history.json')
+            existing = []
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        existing = json.load(f) or []
+                except Exception:
+                    existing = []
+            existing.extend(to_add)
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(existing, f, ensure_ascii=False, indent=2)
+            try:
+                self._refresh_historial()
             except Exception:
                 pass
         except Exception:
