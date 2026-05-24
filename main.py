@@ -3,9 +3,24 @@ from tkinter import font as tkfont
 from tkinter import ttk
 import math
 import re
-from Funciones.cientifica import *
-from Funciones.simples import *
-from Funciones.intereses import *
+import os
+import json
+from Funciones.cientifica import (
+    seno,
+    coseno,
+    tangente,
+    seno_inverso,
+    coseno_inverso,
+    tangente_inversa,
+    logaritmo_base10,
+    logaritmo_Natural,
+    factorial,
+    exponencial,
+    absoluto,
+    potencia,
+)
+from Funciones.simples import raiz_cuadrada
+from Funciones.intereses import interes_simple, interes_compuesto
 
 class Calculadora(tk.Tk):
     def __init__(self):
@@ -95,6 +110,21 @@ class Calculadora(tk.Tk):
         self.historial = tk.Label(self.frame_calc, text="", font=self.hist_font, bg="#1C1C1E", fg="#8E8E93", justify="right", anchor="e")
         self.historial.pack(fill="x", padx=20, pady=(10, 0))
 
+        # Memoria (M+, M-, MR) + indicador
+        mem_frame = tk.Frame(self.frame_calc, bg="#1C1C1E")
+        mem_frame.pack(fill="x", padx=20, pady=(0, 5))
+        tk.Button(mem_frame, text='M+', font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, width=6, command=lambda: self.memory_add()).pack(side='left', padx=2)
+        tk.Button(mem_frame, text='M-', font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, width=6, command=lambda: self.memory_sub()).pack(side='left', padx=2)
+        tk.Button(mem_frame, text='MR', font=("Segoe UI", 10), bg="#3A3A3C", fg="white", bd=0, width=6, command=lambda: self.memory_recall()).pack(side='left', padx=2)
+        self.lbl_mem = tk.Label(mem_frame, text="Mem: 0", font=("Segoe UI", 10), bg="#1C1C1E", fg="#8E8E93")
+        self.lbl_mem.pack(side='left', padx=8)
+        # Cargar memoria desde archivo si existe
+        try:
+            self.load_memory()
+        except Exception:
+            # Si hay cualquier problema, inicializar a 0
+            self.memory = 0.0
+
         # Pantalla Principal
         self.pantalla = tk.Entry(self.frame_calc, font=self.custom_font, bg="#1C1C1E", fg="#FFFFFF", justify="right", bd=0, insertbackground="#FFFFFF")
         self.pantalla.pack(fill="x", padx=10, pady=10)
@@ -103,8 +133,10 @@ class Calculadora(tk.Tk):
         grid_frame = tk.Frame(self.frame_calc, bg="#1C1C1E")
         grid_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
-        for i in range(6): grid_frame.grid_rowconfigure(i, weight=1)
-        for i in range(5): grid_frame.grid_columnconfigure(i, weight=1)
+        for i in range(7):
+            grid_frame.grid_rowconfigure(i, weight=1)
+        for i in range(5):
+            grid_frame.grid_columnconfigure(i, weight=1)
 
         bg_num, bg_acc, bg_op, bg_cient = "#505050", "#D4D4D2", "#FF9F0A", "#3A3A3C"
         
@@ -113,9 +145,15 @@ class Calculadora(tk.Tk):
             ('sin', 1, 0, bg_cient, "#FFFFFF"), ('7', 1, 1, bg_num, "#FFFFFF"), ('8', 1, 2, bg_num, "#FFFFFF"), ('9', 1, 3, bg_num, "#FFFFFF"), ('*', 1, 4, bg_op, "#FFFFFF"),
             ('cos', 2, 0, bg_cient, "#FFFFFF"), ('4', 2, 1, bg_num, "#FFFFFF"), ('5', 2, 2, bg_num, "#FFFFFF"), ('6', 2, 3, bg_num, "#FFFFFF"), ('-', 2, 4, bg_op, "#FFFFFF"),
             ('tan', 3, 0, bg_cient, "#FFFFFF"), ('1', 3, 1, bg_num, "#FFFFFF"), ('2', 3, 2, bg_num, "#FFFFFF"), ('3', 3, 3, bg_num, "#FFFFFF"), ('+', 3, 4, bg_op, "#FFFFFF"),
-            ('log', 4, 0, bg_cient, "#FFFFFF"), ('e', 4, 1, bg_cient, "#FFFFFF"), ('0', 4, 2, bg_num, "#FFFFFF"), ('.', 4, 3, bg_num, "#FFFFFF"), ('=', 4, 4, bg_op, "#FFFFFF"),
+            ('log', 4, 0, bg_cient, "#FFFFFF"), ('%', 4, 1, bg_cient, "#FFFFFF"), ('0', 4, 2, bg_num, "#FFFFFF"), ('.', 4, 3, bg_num, "#FFFFFF"), ('=', 4, 4, bg_op, "#FFFFFF"),
             ('ln', 5, 0, bg_cient, "#FFFFFF"), ('π', 5, 1, bg_cient, "#FFFFFF"), ('^', 5, 2, bg_cient, "#FFFFFF"), ('√', 5, 3, bg_cient, "#FFFFFF"), ('!', 5, 4, bg_cient, "#FFFFFF")
         ]
+
+        # Fila extra de funciones científicas avanzadas
+        extra = [
+            ('asin', 6, 0, bg_cient, "#FFFFFF"), ('acos', 6, 1, bg_cient, "#FFFFFF"), ('atan', 6, 2, bg_cient, "#FFFFFF"), ('exp', 6, 3, bg_cient, "#FFFFFF"), ('abs', 6, 4, bg_cient, "#FFFFFF"),
+        ]
+        botones.extend(extra)
 
         for (texto, f, c, bg, fg) in botones:
             btn = tk.Button(grid_frame, text=texto, font=self.btn_font, bg=bg, fg=fg, bd=0, 
@@ -127,6 +165,12 @@ class Calculadora(tk.Tk):
         self.bind('<Return>', lambda e: self.click_boton('='))
         self.bind('<BackSpace>', lambda e: self.click_boton('⌫'))
         self.bind('<Escape>', lambda e: self.click_boton('C'))
+        self.bind('<Key>', self.key_pressed)
+        # Atajos para memoria
+        self.bind_all('<Control-m>', lambda e: self.memory_add())
+        self.bind_all('<Control-M>', lambda e: self.memory_add())
+        self.bind_all('<Control-Shift-M>', lambda e: self.memory_sub())
+        self.bind_all('<Control-r>', lambda e: self.memory_recall())
         self.pantalla.focus_set()
 
     def crear_interfaz_menu(self):
@@ -234,7 +278,7 @@ class Calculadora(tk.Tk):
                 texto = f"Ganancia: ${ganancia:,.2f}\nTotal: ${total:,.2f}"
             
             self.lbl_res_int.config(text=texto, fg="#32D74B")
-        except:
+        except Exception:
             self.lbl_res_int.config(text="Error en los datos", fg="#FF453A")
 
     def crear_interfaz_conversiones(self):
@@ -332,7 +376,8 @@ class Calculadora(tk.Tk):
 
             if cat == "Monedas":
                 res = convertir_moneda(val, de_u, a_u, self.tasas_monedas)
-                if res is None: raise ValueError("Error API")
+                if res is None:
+                    raise ValueError("Error API")
                 texto = f"{val:,.2f} {de_u} =\n{res:,.2f} {a_u}"
             elif cat == "Pesos":
                 res = convertir_peso(val, de_u, a_u)
@@ -524,6 +569,107 @@ class Calculadora(tk.Tk):
         self.lbl_res_calculo = tk.Label(self.frame_calculo, text="Resultado: -", font=("Segoe UI", 16, "bold"), bg="#1C1C1E", fg="#32D74B", justify="center", wraplength=350)
         self.lbl_res_calculo.pack(pady=10)
 
+    # Memoria: M+, M-, MR
+    def memory_add(self):
+        try:
+            val = float(self.pantalla.get())
+        except Exception:
+            return
+        if not hasattr(self, 'memory'):
+            self.memory = 0.0
+        self.memory += val
+        self.historial.config(text=f"M+ ({self.memory})")
+        mem_text = int(self.memory) if float(self.memory).is_integer() else self.memory
+        try:
+            self.lbl_mem.config(text=f"Mem: {mem_text}")
+        except Exception:
+            pass
+        # Persistir memoria
+        try:
+            self.save_memory()
+        except Exception:
+            pass
+
+    def memory_sub(self):
+        try:
+            val = float(self.pantalla.get())
+        except Exception:
+            return
+        if not hasattr(self, 'memory'):
+            self.memory = 0.0
+        self.memory -= val
+        self.historial.config(text=f"M- ({self.memory})")
+        mem_text = int(self.memory) if float(self.memory).is_integer() else self.memory
+        try:
+            self.lbl_mem.config(text=f"Mem: {mem_text}")
+        except Exception:
+            pass
+        # Persistir memoria
+        try:
+            self.save_memory()
+        except Exception:
+            pass
+
+    def memory_recall(self):
+        if not hasattr(self, 'memory'):
+            self.memory = 0.0
+        # Insertar memoria en la pantalla (reemplaza el contenido actual)
+        self.pantalla.delete(0, tk.END)
+        # Normalizar la representación si es entero
+        mem = int(self.memory) if float(self.memory).is_integer() else self.memory
+        self.pantalla.insert(tk.END, str(mem))
+        try:
+            self.lbl_mem.config(text=f"Mem: {mem}")
+        except Exception:
+            pass
+        # Guardar estado también al hacer recall
+        try:
+            self.save_memory()
+        except Exception:
+            pass
+
+    # Persistencia de memoria en workspace
+    def save_memory(self):
+        try:
+            data = {'memory': self.memory}
+            path = os.path.join(os.getcwd(), 'memory.json')
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f)
+        except Exception:
+            pass
+
+    def load_memory(self):
+        path = os.path.join(os.getcwd(), 'memory.json')
+        if not os.path.exists(path):
+            self.memory = 0.0
+            return self.memory
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            self.memory = float(data.get('memory', 0.0))
+            mem_text = int(self.memory) if float(self.memory).is_integer() else self.memory
+            try:
+                self.lbl_mem.config(text=f"Mem: {mem_text}")
+            except Exception:
+                pass
+            return self.memory
+        except Exception:
+            self.memory = 0.0
+            return self.memory
+
+    def _find_last_op_outside_parens(self, s: str):
+        """Devuelve (index, op) del último operador + - * / que esté fuera de paréntesis, o (None, None)."""
+        depth = 0
+        for i in range(len(s) - 1, -1, -1):
+            ch = s[i]
+            if ch == ')':
+                depth += 1
+            elif ch == '(':
+                depth -= 1
+            elif depth == 0 and ch in '+-*/':
+                return i, ch
+        return None, None
+
     def actualizar_inputs_calculo(self, event=None):
         if self.combo_calculo.get() == "Integral Definida":
             self.frame_limites.pack(fill="x", padx=50, pady=15)
@@ -533,7 +679,8 @@ class Calculadora(tk.Tk):
     def resolver_calculo(self):
         expr = self.ent_expr.get()
         op = self.combo_calculo.get()
-        if not expr: return
+        if not expr:
+            return
         
         from Funciones.integrales_derivadas import calcular_derivada, calcular_integral_indefinida, calcular_integral_definida
         
@@ -600,23 +747,85 @@ class Calculadora(tk.Tk):
             self.historial.config(text="")
         elif texto == '⌫':
             self.pantalla.delete(len(self.pantalla.get())-1, tk.END)
+        elif texto == '%':
+            exp_now = self.pantalla.get()
+            if not exp_now:
+                return
+            # Contexto seguro para evaluar subexpresiones
+            contexto = {
+                'seno': seno,
+                'coseno': coseno,
+                'tangente': tangente,
+                'logaritmo_base10': logaritmo_base10,
+                'logaritmo_Natural': logaritmo_Natural,
+                'factorial': factorial,
+                'raiz_cuadrada': raiz_cuadrada,
+                'math': math
+            }
+            idx, op = self._find_last_op_outside_parens(exp_now)
+            if idx is not None:
+                left_expr = exp_now[:idx]
+                right_part = exp_now[idx+1:].strip()
+                try:
+                    if right_part.startswith('(') and right_part.endswith(')'):
+                        b_val = float(eval(right_part, {"__builtins__": __builtins__}, contexto))
+                    else:
+                        mnum = re.match(r"^\(?\s*(\d+(?:\.\d+)?)\s*\)?$", right_part)
+                        if mnum:
+                            b_val = float(mnum.group(1))
+                        else:
+                            m2 = re.search(r"(\d+(?:\.\d+)?)\s*$", exp_now)
+                            if not m2:
+                                return
+                            b_val = float(m2.group(1))
+
+                    base_val = float(eval(left_expr, {"__builtins__": __builtins__}, contexto))
+                    if op in ['+', '-']:
+                        percent = base_val * b_val / 100.0
+                    else:
+                        percent = b_val / 100.0
+                    if float(percent).is_integer():
+                        percent = int(percent)
+                    new_exp = f"{left_expr}{op}{percent}"
+                    self.pantalla.delete(0, tk.END)
+                    self.pantalla.insert(tk.END, str(new_exp))
+                except Exception:
+                    m2 = re.search(r"(\d+(?:\.\d+)?)\s*$", exp_now)
+                    if m2:
+                        b2 = float(m2.group(1)) / 100.0
+                        self.pantalla.delete(0, tk.END)
+                        self.pantalla.insert(tk.END, str(b2))
+            else:
+                m2 = re.search(r"(\d+(?:\.\d+)?)\s*$", exp_now)
+                if m2:
+                    b2 = float(m2.group(1)) / 100.0
+                    if float(b2).is_integer():
+                        b2 = int(b2)
+                    self.pantalla.delete(0, tk.END)
+                    self.pantalla.insert(tk.END, str(b2))
         elif texto == '=':
             try:
                 exp_orig = self.pantalla.get()
-                if not exp_orig: return
+                if not exp_orig:
+                    return
                 
                 exp = exp_orig
                 
                 # Constantes
                 exp = exp.replace('π', 'math.pi')
                 exp = re.sub(r'\be\b', 'math.e', exp)
-                
-                # Funciones
+
+                # Funciones (orden importante: primero las inversas para evitar colisiones)
+                exp = re.sub(r'\basin\b', 'seno_inverso', exp)
+                exp = re.sub(r'\bacos\b', 'coseno_inverso', exp)
+                exp = re.sub(r'\batan\b', 'tangente_inversa', exp)
                 exp = re.sub(r'\bsin\b', 'seno', exp)
                 exp = re.sub(r'\bcos\b', 'coseno', exp)
                 exp = re.sub(r'\btan\b', 'tangente', exp)
                 exp = re.sub(r'\blog\b', 'logaritmo_base10', exp)
                 exp = re.sub(r'\bln\b', 'logaritmo_Natural', exp)
+                exp = re.sub(r'\bexp\b', 'exponencial', exp)
+                exp = re.sub(r'\babs\b', 'absoluto', exp)
                 
                 # Símbolos
                 exp = exp.replace('^', '**')
@@ -630,25 +839,44 @@ class Calculadora(tk.Tk):
                     'seno': seno,
                     'coseno': coseno,
                     'tangente': tangente,
+                    'seno_inverso': seno_inverso,
+                    'coseno_inverso': coseno_inverso,
+                    'tangente_inversa': tangente_inversa,
                     'logaritmo_base10': logaritmo_base10,
                     'logaritmo_Natural': logaritmo_Natural,
                     'factorial': factorial,
                     'raiz_cuadrada': raiz_cuadrada,
+                    'exponencial': exponencial,
+                    'absoluto': absoluto,
+                    'potencia': potencia,
                     'math': math
                 }
                 
                 res = str(eval(exp, {"__builtins__": __builtins__}, contexto))
-                if res.endswith(".0"): res = res[:-2]
+                if res.endswith(".0"):
+                    res = res[:-2]
                 self.historial.config(text=exp_orig + " =")
                 self.pantalla.delete(0, tk.END)
                 self.pantalla.insert(tk.END, res)
-            except:
+            except Exception:
                 self.pantalla.delete(0, tk.END)
                 self.pantalla.insert(tk.END, "Error")
-        elif texto in ['sin', 'cos', 'tan', 'log', 'ln', '√']:
+        elif texto in ['sin', 'cos', 'tan', 'log', 'ln', '√', 'asin', 'acos', 'atan', 'exp', 'abs']:
             self.pantalla.insert(tk.END, texto + "(")
         else:
             self.pantalla.insert(tk.END, texto)
+
+    def key_pressed(self, event):
+        # Soporte de teclado: insertar dígitos y operadores permitidos
+        ch = event.char
+        if not ch:
+            return
+        allowed = '0123456789.+-*/^()%!eabcdefghijklmnopqrstuvwxyz'
+        if ch in allowed:
+            self.pantalla.insert(tk.END, ch)
+        elif ch == '\r':
+            self.click_boton('=')
+        # Backspace, Escape y Return ya están enlazados
 
 if __name__ == "__main__":
     app = Calculadora()

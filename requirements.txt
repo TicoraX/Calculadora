@@ -1,0 +1,2 @@
+ruff==0.15.14
+# runtime packages are stdlib (tkinter, math, json) — no extra runtime deps

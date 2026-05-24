@@ -1,6 +1,6 @@
 import math
-from Funciones.cientifica import *
-from Funciones.simples import *
+from Funciones.cientifica import seno, coseno, tangente, logaritmo_base10, logaritmo_Natural, factorial
+from Funciones.simples import raiz_cuadrada
 import re
 
 def test_eval():
